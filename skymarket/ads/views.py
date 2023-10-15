@@ -1,5 +1,8 @@
+from rest_framework.generics import get_object_or_404
+from rest_framework.response import Response
 from rest_framework import pagination, viewsets
-
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 from ads.models import Ad, Comment
 from ads.serializers import AdSerializer, CommentSerializer
@@ -15,37 +18,34 @@ class AdPagination(pagination.PageNumberPagination):
 # class MyTokenObtainPairView(TokenObtainPairView):
 #     serializer_class = MyTokenObtainPairSerializer
 
+
 # TODO view функции. Предлагаем Вам следующую структуру - но Вы всегда можете использовать свою
 class AdViewSet(viewsets.ModelViewSet):
     serializer_class = AdSerializer
     queryset = Ad.objects.all()
-    permission_classes = [IsAuthorOrAdmin]
-    pagination_class = [AdPaginator]
+    permission_classes = (IsAuthenticated,)
+    pagination_class = AdPaginator
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(author=self.request.user)
 
+    def get_queryset(self):
+        # if self.request.user.groups.filter(name='moderator').exists():
+        #     return Ad.objects.all()
 
-def get_queryset(self):
-    if self.request.user.groups.filter(name='moderator').exists():
-        return Ad.objects.all()
+        return Ad.objects.filter(author=self.request.user)
 
-    return Ad.objects.filter(user=self.request.user)
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return super().get_permissions()
+        permission_classes = (IsAuthorOrAdmin,)
+        return [permission() for permission in permission_classes]
 
-
-# def get_permissions(self):
-#     permission_classes = (IsAuthenticated,)
-#
-#     if self.action == 'create':
-#         permission_classes = (IsModerator,)
-#
-#     elif self.action == 'destroy':
-#         permission_classes = (IsModerator, IsUserOrStaff)
-#
-#     elif self.action == 'update' or self.action == 'partial_update':
-#         permission_classes = (IsModerator | IsUserOrStaff,)
-#
-#     return [permission() for permission in permission_classes]
+    @action(detail=True, methods=['GET'], serializer_class=CommentSerializer)
+    def comments(self, *args, **kwargs):
+        comments = self.get_object().comments.all()
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -53,15 +53,23 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     permission_classes = [IsAuthorOrAdmin]
 
-    pagination_class = [CommentPaginator]
+    pagination_class = CommentPaginator
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        ad_id = self.kwargs.get('ad_pk')
+        ad = get_object_or_404(Ad, id=ad_id)
+        serializer.save(author=self.request.user, ad=ad)
 
+    def get_queryset(self):
+        ad_id = self.kwargs.get('ad_pk')
+        ad = get_object_or_404(Ad, id=ad_id)
+        if self.request.user.groups.filter(name='admin').exists():
+            return Comment.objects.all()
 
-def get_queryset(self):
-    if self.request.user.groups.filter(name='admin').exists():
-        return Comment.objects.all()
+        return Comment.objects.filter(author=self.request.user, ad=ad)
 
-    return Comment.objects.filter(user=self.request.user)
-
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return super().get_permissions()
+        permission_classes = (IsAuthorOrAdmin,)
+        return [permission() for permission in permission_classes]
