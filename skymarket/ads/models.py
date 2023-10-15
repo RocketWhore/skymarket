@@ -19,12 +19,13 @@ class Ad(models.Model):
     class Meta:
         verbose_name = 'объявление'
         verbose_name_plural = 'объявления'
+        ordering = ('-created_at',)
 
 
 class Comment(models.Model):
     text = models.CharField(max_length=150, verbose_name='комментарий', default='')
     author = models.ForeignKey(
-        User, verbose_name='владелец', on_delete=models.CASCADE, related_name='comments'
+        User, verbose_name='владелец', on_delete=models.CASCADE, related_name='author'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     ad = models.ForeignKey(Ad, verbose_name='объявление', on_delete=models.CASCADE, related_name='comments')
@@ -35,3 +36,4 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'комментарий'
         verbose_name_plural = 'комментарии'
+        ordering = ('-created_at',)

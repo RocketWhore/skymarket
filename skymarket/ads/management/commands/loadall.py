@@ -19,3 +19,4 @@ class Command(BaseCommand):
             call_command(
                 self.loaddata_command, os.path.join(self.fixtures_dir, f"{fixture_filename}.json")
             )
+        

@@ -15,6 +15,7 @@ from ads.paginator import CommentPaginator, AdPaginator
 class AdPagination(pagination.PageNumberPagination):
     pass
 
+
 # class MyTokenObtainPairView(TokenObtainPairView):
 #     serializer_class = MyTokenObtainPairSerializer
 
@@ -23,53 +24,39 @@ class AdPagination(pagination.PageNumberPagination):
 class AdViewSet(viewsets.ModelViewSet):
     serializer_class = AdSerializer
     queryset = Ad.objects.all()
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = AdPaginator
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    def get_queryset(self):
-        # if self.request.user.groups.filter(name='moderator').exists():
-        #     return Ad.objects.all()
-
-        return Ad.objects.filter(author=self.request.user)
-
     def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
+        if self.action in ('list', 'retrieve', 'create'):
             return super().get_permissions()
         permission_classes = (IsAuthorOrAdmin,)
         return [permission() for permission in permission_classes]
-
-    @action(detail=True, methods=['GET'], serializer_class=CommentSerializer)
-    def comments(self, *args, **kwargs):
-        comments = self.get_object().comments.all()
-        serializer = CommentSerializer(comments, many=True)
-        return Response(serializer.data)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     queryset = Comment.objects.all()
-    permission_classes = [IsAuthorOrAdmin]
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     pagination_class = CommentPaginator
 
     def perform_create(self, serializer):
-        ad_id = self.kwargs.get('ad_pk')
+        ad_id = self.kwargs.get('ad_id')
         ad = get_object_or_404(Ad, id=ad_id)
         serializer.save(author=self.request.user, ad=ad)
 
     def get_queryset(self):
-        ad_id = self.kwargs.get('ad_pk')
+        ad_id = self.kwargs.get('ad_id')
         ad = get_object_or_404(Ad, id=ad_id)
-        if self.request.user.groups.filter(name='admin').exists():
-            return Comment.objects.all()
 
-        return Comment.objects.filter(author=self.request.user, ad=ad)
+        return ad.comments.all()
 
     def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
+        if self.action in ('list', 'retrieve', 'create'):
             return super().get_permissions()
         permission_classes = (IsAuthorOrAdmin,)
         return [permission() for permission in permission_classes]

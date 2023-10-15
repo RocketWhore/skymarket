@@ -11,8 +11,7 @@ app_name = "ads"
 
 router = DefaultRouter()
 router.register(r'ads', AdViewSet, basename='ads')
-router.register(r'comments', CommentViewSet, basename='comments')
+router.register(r'ads/(?P<ad_id>\d+)/comments', CommentViewSet, basename='comments')
 
-urlpatterns = [
+urlpatterns = router.urls
 
-] + router.urls

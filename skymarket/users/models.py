@@ -5,7 +5,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 class User(AbstractUser):
     NULLABLE = {'blank': True, 'null': True}
-
+    username = models.CharField(max_length=35, **NULLABLE)
     first_name = models.CharField(max_length=35, verbose_name='имя')
     last_name = models.CharField(max_length=35, verbose_name='фамилия')
     email = models.EmailField(unique=True, verbose_name='почта')
@@ -26,8 +26,3 @@ class User(AbstractUser):
     # которые необходимо заполнить при создании пользователя
     REQUIRED_FIELDS = ['first_name', 'last_name', 'phone', "role", 'username']
 
-    def has_perm(self, perm, obj=None):
-        return self.is_admin
-
-    def has_module_perms(self, app_label):
-        return self.is_admin
